@@ -1,1 +1,0 @@
-# cografya_egitim
