@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f2">
+  <meta name="description" content="Türkiye'nin coğrafyasını harita katmanları, keşifler ve kısa oyunlarla öğren.">
+  <title>Atlas — Türkiye'yi keşfet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17241f;
+      --muted: #758079;
+      --line: #e8ece6;
+      --paper: #fff;
+      --canvas: #f5f7f2;
+      --green: #2f7156;
+      --green-dark: #245c45;
+      --mint: #e7f2e9;
+      --orange: #e99a5c;
+      --shadow: 0 14px 40px rgba(29, 48, 37, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: "DM Sans", sans-serif; font-size: 14px; }
+    button, a { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #90c29d; outline-offset: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
+    .shell { max-width: 1440px; margin: auto; padding: 0 42px; }
+    .topbar { height: 78px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; gap: 11px; align-items: center; font: 800 21px Manrope, sans-serif; letter-spacing: -1px; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--green); color: white; border-radius: 11px; }
+    .brand-mark svg { width: 19px; }
+    .nav { display: flex; align-items: center; gap: 32px; color: #647069; font-size: 13px; font-weight: 600; }
+    .nav a:hover { color: var(--green); }
+    .nav-tools { display: flex; align-items: center; gap: 10px; }
+    .button { border: 0; border-radius: 10px; padding: 11px 15px; background: var(--paper); cursor: pointer; font-weight: 700; font-size: 12px; transition: .2s ease; }
+    .button:hover { transform: translateY(-1px); }
+    .button-green { background: var(--green); color: white; }
+    .button-green:hover { background: var(--green-dark); }
+    .button-outline { border: 1px solid var(--line); }
+    .button-bep { display: flex; gap: 8px; align-items: center; }
+    .button-bep svg { width: 16px; }
+    .bep-assist { margin: 0 42px 18px; padding: 14px 18px; border: 1px solid #aac9b1; border-radius: 12px; background: #eaf5ec; color: #23392b; display: flex; align-items: center; justify-content: space-between; gap: 14px; line-height: 1.6; }
+    .bep-assist[hidden] { display: none; }
+    .bep-assist p { margin: 0; }
+    .bep-assist button { flex-shrink: 0; }
+    .intro { padding: 42px 0 26px; display: flex; align-items: end; justify-content: space-between; gap: 22px; }
+    .eyebrow { color: var(--green); font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2, h3 { font-family: Manrope, sans-serif; letter-spacing: -1px; }
+    h1 { margin: 9px 0 8px; font-size: clamp(32px, 4vw, 46px); line-height: 1.1; }
+    .intro-copy { color: var(--muted); font-size: 14px; line-height: 1.7; margin: 0; }
+    .intro-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 294px; gap: 17px; }
+    .map-card, .side-card, .learn-card { background: var(--paper); border: 1px solid var(--line); border-radius: 17px; box-shadow: var(--shadow); }
+    .map-card { padding: 12px; min-width: 0; }
+    .map-topline { min-height: 45px; display: flex; align-items: center; justify-content: space-between; padding: 0 4px 10px; gap: 10px; }
+    .map-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+    .live-dot { height: 7px; width: 7px; background: #64a979; border-radius: 50%; box-shadow: 0 0 0 3px #e6f4e9; }
+    .map-actions { display: flex; align-items: center; gap: 8px; }
+    .select { padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: white; color: #526058; font-size: 11px; font-weight: 600; cursor: pointer; }
+    #map { height: 480px; width: 100%; border-radius: 12px; background: #dce5d8; z-index: 1; }
+    .map-bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 4px 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .map-bottom a { text-decoration: underline; text-underline-offset: 2px; }
+    .layer-card { padding: 17px 16px; }
+    .side-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .side-heading h2 { font-size: 16px; margin: 0; letter-spacing: -.4px; }
+    .icon-button { border: 0; background: transparent; padding: 5px; color: var(--muted); cursor: pointer; }
+    .layer-help { color: var(--muted); font-size: 11px; line-height: 1.5; margin-bottom: 14px; }
+    .layer-list { display: grid; gap: 7px; }
+    .layer-option { width: 100%; border: 1px solid var(--line); border-radius: 11px; background: #fff; padding: 10px; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer; transition: .2s ease; }
+    .layer-option:hover { border-color: #b7d2bd; }
+    .layer-option.active { background: #f1f8f2; border-color: #a7c9ae; }
+    .layer-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; font-size: 16px; background: #f3f5f2; }
+    .layer-option.active .layer-icon { background: #e2efe4; }
+    .layer-copy { min-width: 0; flex: 1; }
+    .layer-name { display: block; font-size: 11px; font-weight: 700; }
+    .layer-desc { display: block; color: var(--muted); font-size: 9px; margin-top: 3px; }
+    .switch { width: 29px; height: 17px; padding: 2px; border-radius: 99px; background: #e8ece8; flex-shrink: 0; }
+    .switch::after { content: ""; display: block; width: 13px; height: 13px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; transition: transform .18s ease; }
+    .active .switch { background: var(--green); }
+    .active .switch::after { transform: translateX(12px); }
+    .source-note { background: #f7f8f5; border-radius: 10px; margin-top: 13px; padding: 10px; color: #68746d; font-size: 10px; line-height: 1.55; }
+    .source-note strong { color: var(--ink); }
+    .water-focus { margin-top: 12px; padding: 12px; background: #eef6f7; border: 1px solid #dcebee; border-radius: 11px; }
+    .water-focus[hidden] { display: none; }
+    .water-focus label { display: block; margin-bottom: 7px; color: #254c56; font-size: 11px; font-weight: 700; }
+    .water-focus-row { display: flex; gap: 7px; }
+    .water-focus select { flex: 1; min-width: 0; padding: 8px; border: 1px solid #cbdfe2; border-radius: 8px; background: #fff; color: var(--ink); font-size: 11px; }
+    .water-focus button { padding: 8px 10px; border: 0; border-radius: 8px; background: #327b8b; color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .water-focus-help { margin: 7px 0 0; color: #64757a; font-size: 10px; line-height: 1.5; }
+    .lesson { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+    .lesson-label { color: var(--green); text-transform: uppercase; letter-spacing: 1px; font-size: 9px; font-weight: 700; }
+    .lesson h3 { margin: 5px 0; font-size: 14px; }
+    .lesson p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .learn-section { padding: 62px 0 72px; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 22px; }
+    .section-heading h2 { font-size: 27px; margin: 7px 0 5px; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+    .learn-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 15px; }
+    .learn-card { min-height: 185px; padding: 19px; box-shadow: none; }
+    .learn-card:first-child { background: #e9f2e9; border-color: #e1ece0; }
+    .learn-card:nth-child(2) { background: #fff4e9; border-color: #f4e8d9; }
+    .learn-card:nth-child(3) { background: #edf1f8; border-color: #e3e8f1; }
+    .card-emoji { font-size: 21px; }
+    .learn-card h3 { font-size: 16px; margin: 12px 0 5px; }
+    .learn-card p { color: #67736c; font-size: 11px; line-height: 1.6; margin-bottom: 13px; }
+    .text-link { border: 0; padding: 0; background: transparent; color: var(--green-dark); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .quiz { display: flex; flex-direction: column; }
+    .quiz h3 { margin-bottom: 9px; }
+    .quiz-question { color: #626c67; font-size: 11px; line-height: 1.5; margin: 0 0 8px; }
+    .quiz-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .quiz-choice { border: 1px solid #dfe5df; background: #ffffffb8; border-radius: 8px; padding: 6px 9px; font-size: 10px; cursor: pointer; }
+    .quiz-choice:hover { border-color: #9db8a2; }
+    .quiz-feedback { min-height: 15px; margin-top: 8px; font-size: 10px; font-weight: 700; }
+    .vr-viewer { position: fixed; inset: 0; z-index: 3000; display: flex; background: #07100d; color: #fff; }
+    .vr-viewer[hidden] { display: none; }
+    .vr-eye { position: relative; width: 50%; height: 100%; overflow: hidden; }
+    .vr-eye + .vr-eye { border-left: 2px solid rgba(255,255,255,.55); }
+    .vr-map { width: 100%; height: 100%; background: #dce5d8; }
+    .vr-label { position: absolute; z-index: 500; top: 16px; left: 16px; padding: 7px 10px; border-radius: 7px; background: rgba(8,20,14,.78); font-size: 12px; }
+    .vr-close { position: absolute; z-index: 1000; top: 14px; right: 14px; padding: 10px 14px; border: 0; border-radius: 8px; background: #fff; color: #17241f; font-weight: 700; cursor: pointer; }
+    .vr-crosshair { position: absolute; z-index: 500; top: 50%; left: 50%; width: 10px; height: 10px; border: 1px solid #fff; border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+    .footer { border-top: 1px solid var(--line); padding: 20px 0 25px; display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+    .footer a { color: var(--green-dark); text-decoration: underline; text-underline-offset: 2px; }
+    .leaflet-popup-content-wrapper { border-radius: 11px; }
+    .popup-title { font: 700 13px Manrope, sans-serif; margin-bottom: 4px; }
+    .popup-text { font-size: 11px; line-height: 1.5; margin: 0; }
+    .bep-mode { font-size: 17px; --muted: #46564b; }
+    .bep-mode .shell { max-width: 1520px; }
+    .bep-mode .layer-option { padding: 13px 10px; }
+    .bep-mode .layer-name, .bep-mode .quiz-question, .bep-mode .layer-help, .bep-mode .layer-desc, .bep-mode .source-note, .bep-mode .lesson p, .bep-mode .map-bottom, .bep-mode .learn-card p, .bep-mode .section-heading p, .bep-mode .intro-copy { font-size: 16px; line-height: 1.8; }
+    .bep-mode .layer-name, .bep-mode .learn-card h3, .bep-mode .lesson h3 { font-size: 19px; }
+    .bep-mode .layer-option, .bep-mode .quiz-choice, .bep-mode .button { min-height: 48px; }
+    .bep-mode .learn-card { min-height: 225px; }
+    .bep-mode .layer-option { border-width: 2px; }
+    .bep-mode .source-note, .bep-mode .learn-card { border: 2px solid #b6c8b9; }
+    @media (max-width: 1050px) {
+      .shell { padding: 0 25px; }
+      .map-layout { grid-template-columns: minmax(0, 1fr) 270px; }
+      #map { height: 440px; }
+      .nav { gap: 18px; }
+    }
+    @media (max-width: 760px) {
+      .shell { padding: 0 16px; }
+      .topbar { height: 66px; }
+      .nav { display: none; }
+      .intro { padding: 30px 0 20px; align-items: start; flex-direction: column; }
+      .intro-actions { width: 100%; }
+      .intro-actions { flex-wrap: wrap; }
+      .intro-actions .button { flex: 1 1 calc(50% - 5px); text-align: center; justify-content: center; }
+      #locate-button { flex-basis: 100%; }
+      .bep-assist { margin: 0 16px 16px; align-items: start; flex-direction: column; }
+      .map-layout { grid-template-columns: 1fr; }
+      #map { height: 390px; }
+      .layer-card { order: -1; }
+      .layer-list { grid-template-columns: 1fr 1fr; }
+      .layer-option { padding: 8px; gap: 7px; }
+      .layer-icon { width: 28px; height: 28px; }
+      .map-topline { align-items: start; }
+      .map-actions { flex-wrap: wrap; justify-content: end; }
+      .learn-section { padding: 48px 0; }
+      .learn-grid { grid-template-columns: 1fr; }
+      .learn-card { min-height: auto; }
+      .section-heading { align-items: start; flex-direction: column; }
+      .footer { flex-direction: column; }
+      .vr-label { top: 58px; left: 6px; padding: 5px; font-size: 10px; }
+      .vr-close { top: 8px; right: 8px; padding: 8px; font-size: 11px; }
+    }
+    @media (max-width: 390px) {
+      .layer-list { grid-template-columns: 1fr; }
+      .map-topline { flex-direction: column; }
+      .map-actions { justify-content: start; }
+      #map { height: 340px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell topbar">
+    <a class="brand" href="#" aria-label="Atlas ana sayfa">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 19 9 5l4 14 3-9 4 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="5" r="1.5" fill="#F0B47D"/></svg></span>
+      atlas<span style="color:var(--green)">.</span>
+    </a>
+    <nav class="nav" aria-label="Ana gezinme">
+      <a href="#kesfet">Haritayı keşfet</a>
+      <a href="#oyna">Öğren &amp; oyna</a>
+      <a href="#kaynaklar">Kaynaklar</a>
+    </nav>
+    <div class="nav-tools">
+      <button class="button button-outline button-bep" id="bep-toggle" aria-pressed="false" aria-controls="bep-assist" title="Bireyselleştirilmiş Eğitim Programı: kolay okuma ve dinleme seçenekleri">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M5 8h14M7 8v3a5 5 0 0 0 10 0V8M4 21h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        BEP modu
+      </button>
+    </div>
+  </header>
+
+  <section class="bep-assist shell" id="bep-assist" hidden aria-live="polite">
+    <p><strong>BEP = Bireyselleştirilmiş Eğitim Programı.</strong> Bu görünüm; farklı öğrenme ihtiyaçları olan, okuduğunu anlamakta zorlanan öğrenciler için yazıları büyütür ve sadeleştirir. İstersen ders içeriklerini sesli dinleyebilirsin.</p>
+    <button class="button button-green" id="read-aloud" type="button" aria-pressed="false">🔊 Sayfayı sesli oku</button>
+  </section>
+
+  <main>
+    <section class="shell intro" id="kesfet">
+      <div>
+        <div class="eyebrow">Coğrafya, keşfederek öğrenilir</div>
+        <h1>Türkiye'yi katman katman keşfet.</h1>
+        <p class="intro-copy">Haritayı aç, merak ettiğin katmanı seç. Türkiye'nin doğal ve beşerî coğrafyasını<br class="desktop-break"> kendi hızında, etkileşimli olarak incele.</p>
+      </div>
+      <div class="intro-actions">
+        <a class="button button-green" href="#oyna">Keşfe başla&nbsp; ↘</a>
+        <button class="button button-outline" id="vr-toggle" type="button" aria-pressed="false" title="Telefonu hareket ettirerek haritayı kaydır">🥽 Jiroskopla keşfet</button>
+        <button class="button button-outline" id="locate-button" title="Türkiye haritasına dön">⌖ &nbsp;Türkiye'ye dön</button>
+      </div>
+    </section>
+
+    <section class="shell map-layout" aria-label="Etkileşimli Türkiye haritası">
+      <article class="map-card">
+        <div class="map-topline">
+          <div class="map-title"><span class="live-dot" aria-hidden="true"></span><span id="map-status">Türkiye — Yükselti kabartması</span></div>
+          <div class="map-actions">
+            <label class="sr-only" for="basemap">Harita tabanı</label>
+            <select class="select" id="basemap" aria-label="Harita tabanı">
+              <option value="terrain">Fiziki harita · OSM</option>
+              <option value="relief" selected>Yükselti kabartması</option>
+              <option value="satellite">Uydu görüntüsü · Esri</option>
+              <option value="nasa">Güncel uydu görüntüsü · NASA</option>
+              <option value="topographic">Topografya · akarsu ve göller</option>
+            </select>
+            <button class="select" id="reset-map" type="button">Haritayı sıfırla</button>
+          </div>
+        </div>
+        <div id="map" role="application" aria-label="Yakınlaştırılabilir Türkiye haritası"></div>
+        <div class="map-bottom">
+          <span id="map-caption">Harita verisi: OpenStreetMap · Görüntü: Esri. Uydu görüntüsü gerçek zamanlı değildir.</span>
+          <span>Yakınlaştırmak için haritayı kullan</span>
+        </div>
+      </article>
+      <aside class="side-card layer-card" aria-label="Harita katmanları">
+        <div class="side-heading"><h2>Harita katmanları</h2><button class="icon-button" id="clear-layers" aria-label="Tüm katmanları kapat" title="Tüm katmanları kapat">↺</button></div>
+        <p class="layer-help">İncelemek istediğin konuyu seç. Katmanlar harita üzerinde gösterilir.</p>
+        <div class="layer-list">
+          <button class="layer-option" data-layer="water" aria-pressed="false"><span class="layer-icon">💧</span><span class="layer-copy"><span class="layer-name">Su kaynakları</span><span class="layer-desc">Akarsular, göller · hidroğrafya</span></span><span class="switch" aria-hidden="true"></span></button>
+          <button class="layer-option" data-layer="transport" aria-pressed="false"><span class="layer-icon">🛣️</span><span class="layer-copy"><span class="layer-name">Ulaşım</span><span class="layer-desc">Yol ağı · Esri</span></span><span class="switch" aria-hidden="true"></span></button>
+          <button class="layer-option" data-layer="earthquakes" aria-pressed="false"><span class="layer-icon">〰️</span><span class="layer-copy"><span class="layer-name">Afet &amp; deprem</span><span class="layer-desc">Son 30 gün · USGS / AFAD</span></span><span class="switch" aria-hidden="true"></span></button>
+          <button class="layer-option" data-layer="population" aria-pressed="false"><span class="layer-icon">👥</span><span class="layer-copy"><span class="layer-name">Nüfus yoğunluğu</span><span class="layer-desc">NASA GPW · 2020</span></span><span class="switch" aria-hidden="true"></span></button>
+          <button class="layer-option" data-layer="climate" aria-pressed="false"><span class="layer-icon">🌿</span><span class="layer-copy"><span class="layer-name">İklim &amp; bitki örtüsü</span><span class="layer-desc">Arazi örtüsü · NASA 2024</span></span><span class="switch" aria-hidden="true"></span></button>
+        </div>
+        <div class="water-focus" id="water-focus" hidden>
+          <label for="water-place">Bir akarsu veya göl seç</label>
+          <div class="water-focus-row">
+            <select id="water-place">
+              <option value="kizilirmak">Kızılırmak</option>
+              <option value="sakarya">Sakarya Nehri</option>
+              <option value="yesilirmak">Yeşilırmak</option>
+              <option value="firat">Fırat Nehri</option>
+              <option value="dicle">Dicle Nehri</option>
+              <option value="van">Van Gölü</option>
+              <option value="tuz">Tuz Gölü</option>
+              <option value="beysehir">Beyşehir Gölü</option>
+            </select>
+            <button type="button" id="water-go">Haritada göster</button>
+          </div>
+          <p class="water-focus-help">Seçtiğin gerçek coğrafi konum topografik haritada açılır. Yakınlaştırdıkça akarsu ve göl ayrıntıları görünür.</p>
+        </div>
+        <div class="source-note" id="layer-note"><strong>Bir katman seç.</strong> Haritada gerçek konumları gör; kaynak ve güncellik bilgisi için katman notlarını incele.</div>
+        <div class="lesson">
+          <span class="lesson-label">Harita ipucu</span>
+          <h3>Önce bütüne bak.</h3>
+          <p>Haritayı yakınlaştırıp uzaklaştırarak bölgesel örüntüler ile yerel ayrıntıları karşılaştır.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="shell learn-section" id="oyna">
+      <div class="section-heading">
+        <div><div class="eyebrow">Ders bitti, keşif bitmedi</div><h2>Biraz öğren, biraz oyna.</h2><p>Küçük görevlerle coğrafya bilgini tazele.</p></div>
+        <span class="eyebrow">9. &amp; 10. sınıf</span>
+      </div>
+      <div class="learn-grid">
+        <article class="learn-card">
+          <span class="card-emoji" aria-hidden="true">🧭</span>
+          <h3>Bugünün keşif görevi</h3>
+          <p>Uydu görüntüsüne geç. Karadeniz kıyılarını bul ve kıyı çizgisinin Ege kıyılarına göre neden daha az girintili çıktılı olduğunu düşün.</p>
+          <button class="text-link" id="mission-button">Haritada incele&nbsp; →</button>
+        </article>
+        <article class="learn-card">
+          <span class="card-emoji" aria-hidden="true">🔐</span>
+          <h3>Şifreli coğrafya</h3>
+          <p>İpucu: “Dört mevsim yeşil, her mevsim yağışlı; Türkiye'nin kuzeyinde kıyıya paralel uzanır.” Bu iklimin adı ne?</p>
+          <button class="text-link" id="riddle-button">Cevabı göster&nbsp; →</button>
+          <p class="quiz-feedback" id="riddle-answer" aria-live="polite"></p>
+        </article>
+        <article class="learn-card quiz">
+          <span class="card-emoji" aria-hidden="true">🎯</span>
+          <h3>Hızlı bilgi yarışması</h3>
+          <p class="quiz-question">Türkiye sınırları içindeki en uzun akarsu hangisidir?</p>
+          <div class="quiz-actions">
+            <button class="quiz-choice" data-correct="false">Fırat</button>
+            <button class="quiz-choice" data-correct="true">Kızılırmak</button>
+            <button class="quiz-choice" data-correct="false">Sakarya</button>
+          </div>
+          <p class="quiz-feedback" id="quiz-feedback" aria-live="polite"></p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="vr-viewer" id="vr-viewer" hidden role="dialog" aria-modal="true" aria-label="Sanal gerçeklik harita görünümü">
+    <div class="vr-eye"><span class="vr-label">SOL GÖZ</span><div class="vr-map" id="vr-left-map"></div></div>
+    <div class="vr-eye"><span class="vr-label">SAĞ GÖZ</span><div class="vr-map" id="vr-right-map"></div></div>
+    <div class="vr-crosshair" aria-hidden="true"></div>
+    <button class="vr-close" id="vr-close" type="button">✕ VR görünümünden çık</button>
+  </div>
+
+  <footer class="shell footer" id="kaynaklar">
+    <span>Atlas · Coğrafyayı keşfet, dünyayı anla.</span>
+    <span>Harita kaynakları: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> · <a href="https://www.esri.com/en-us/home" target="_blank" rel="noreferrer">Esri</a> · <a href="https://earthdata.nasa.gov/eosdis/science-system-description/eosdis-components/gibs" target="_blank" rel="noreferrer">NASA GIBS</a> · <a href="https://earthquake.usgs.gov/fdsnws/event/1/" target="_blank" rel="noreferrer">USGS</a> · <a href="https://data.tuik.gov.tr/" target="_blank" rel="noreferrer">TÜİK</a> · <a href="https://tdth.afad.gov.tr/" target="_blank" rel="noreferrer">AFAD</a> · <a href="https://www.mgm.gov.tr/" target="_blank" rel="noreferrer">MGM</a></span>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    (() => {
+      const turkeyBounds = [[35.7, 25.5], [42.3, 45.0]];
+      const map = L.map("map", { zoomControl: false, minZoom: 5 }).setView([39.0, 35.2], 6);
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+      const activeLayers = new Set();
+      const status = document.getElementById("map-status");
+      const note = document.getElementById("layer-note");
+      const baseControl = document.getElementById("basemap");
+      const mapCaption = document.getElementById("map-caption");
+      const today = new Date();
+      const nasaImageDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      let selectedBase = "relief";
+      let baseBeforeWater = "relief";
+      let nasaFallbackUsed = false;
+      const baseLayers = new Map();
+      const dataLayers = new Map();
+      const earthquakeGroups = new Map();
+      const waterFocusGroups = new Map();
+      const vrMaps = [];
+      let earthquakeData;
+      const notes = {
+        water: '<strong>Akarsular ve göller · Topografik hidroğrafya.</strong> Türkiye ölçeğinde bütün ülkeyi, bölgesel ölçekte akarsu ve göl ayrıntılarını gösterir. Mavi su çizgileri ve adları yakından daha net görünür. Kaynaklar: <a href="https://www.arcgis.com/home/item.html?id=30e5fe3149c34df1ba922e6f5bbf808f" target="_blank" rel="noreferrer">Esri World Topographic Map</a> · <a href="https://www.arcgis.com/home/item.html?id=9f86716d941c4410b0b406d911754b2c" target="_blank" rel="noreferrer">Esri Hydro Reference</a>.',
+        transport: "<strong>Ulaşım · Esri World Transportation.</strong> Haritadaki yol ağı gerçek harita verisidir; anlık trafik yoğunluğunu göstermez. Veri servisi Esri tarafından sağlanır.",
+        earthquakes: ' <strong>Deprem hareketliliği · USGS.</strong> Türkiye ve çevresinde son 30 günde kaydedilen depremler gösterilir. Bu, risk haritası veya tahmin değildir. Resmî tehlike bilgisi için <a href="https://tdth.afad.gov.tr/" target="_blank" rel="noreferrer">AFAD Türkiye Deprem Tehlike Haritası</a>\'na bak.',
+        population: '<strong>Nüfus yoğunluğu · NASA GPW 2020.</strong> Bu gerçek küresel nüfus yoğunluğu rasteridir (2020). İl bazında yıllık nüfus ve göç sayıları için <a href="https://data.tuik.gov.tr/" target="_blank" rel="noreferrer">TÜİK</a>\'i incele; bu harita göç hareketini göstermez.',
+        climate: '<strong>Arazi örtüsü · NASA MODIS 2024.</strong> Haritada gerçek uydu tabanlı arazi örtüsü sınıfları gösterilir; bu bir iklim tahmini değildir. İklim bilgileri için <a href="https://www.mgm.gov.tr/" target="_blank" rel="noreferrer">Meteoroloji Genel Müdürlüğü</a>\'nü incele.'
+      };
+      const layerLabels = { water: "Sular ve topoğrafya", transport: "Ulaşım", earthquakes: "Deprem hareketliliği", population: "Nüfus yoğunluğu", climate: "Arazi örtüsü" };
+      const waterPlaces = {
+        kizilirmak: { name: "Kızılırmak", center: [39.9, 35.6], zoom: 8 },
+        sakarya: { name: "Sakarya Nehri", center: [40.1, 30.5], zoom: 9 },
+        yesilirmak: { name: "Yeşilırmak", center: [40.8, 36.1], zoom: 9 },
+        firat: { name: "Fırat Nehri", center: [38.6, 39.4], zoom: 8 },
+        dicle: { name: "Dicle Nehri", center: [37.9, 40.2], zoom: 8 },
+        van: { name: "Van Gölü", center: [38.6, 42.8], zoom: 8 },
+        tuz: { name: "Tuz Gölü", center: [38.8, 33.4], zoom: 8 },
+        beysehir: { name: "Beyşehir Gölü", center: [37.7, 31.6], zoom: 9 }
+      };
+
+      function createBaseLayer(name, owner) {
+        const layers = {
+          terrain: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          }),
+          relief: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}", {
+            maxNativeZoom: 13, maxZoom: 19, attribution: "Map tiles &copy; Esri"
+          }),
+          satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 19, attribution: "Imagery &copy; Esri"
+          }),
+          topographic: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 19, attribution: "Map tiles &copy; Esri"
+          }),
+          nasa: L.tileLayer(`https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/${nasaImageDate}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpeg`, {
+            maxNativeZoom: 9, maxZoom: 19, attribution: "Imagery courtesy NASA EOSDIS GIBS"
+          })
+        };
+        const layer = layers[name];
+        if (name === "nasa") {
+          layer.on("tileerror", () => {
+            if (owner !== map || nasaFallbackUsed || selectedBase !== "nasa") return;
+            nasaFallbackUsed = true;
+            forEachMap(ownerMap => setBaseLayer("satellite", ownerMap));
+            baseControl.value = "satellite";
+            note.innerHTML = "<strong>NASA görüntüsü şu anda kullanılamıyor.</strong> Harita çalışmaya devam ediyor; Esri uydu görüntüsüne geçildi.";
+          });
+        }
+        return layer;
+      }
+
+      function createDataLayer(name) {
+        const layers = {
+          water: L.tileLayer("https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/Esri_Hydro_Reference_Overlay/MapServer/tile/{z}/{y}/{x}", {
+            maxNativeZoom: 8, maxZoom: 19, opacity: .9, attribution: "Hydrography &copy; Esri"
+          }),
+          transport: L.tileLayer("https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}", {
+            maxZoom: 19, attribution: "Map data &copy; Esri"
+          }),
+          population: L.tileLayer("https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GPW_Population_Density_2020/default/default/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png", {
+            maxNativeZoom: 7, maxZoom: 19, opacity: .8, attribution: "Population data: NASA SEDAC GPW 2020"
+          }),
+          climate: L.tileLayer("https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_L3_IGBP_Land_Cover_Type_Annual/default/2024-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png", {
+            maxNativeZoom: 8, maxZoom: 19, opacity: .78, attribution: "Land cover: NASA MODIS 2024"
+          })
+        };
+        return layers[name];
+      }
+
+      function setBaseLayer(name, owner = map) {
+        const previous = baseLayers.get(owner);
+        if (previous) owner.removeLayer(previous);
+        const next = createBaseLayer(name, owner);
+        next.addTo(owner);
+        baseLayers.set(owner, next);
+        if (owner === map) {
+          selectedBase = name;
+          if (name === "nasa") nasaFallbackUsed = false;
+          const captions = {
+            terrain: "Fiziki harita: OpenStreetMap. Gerçek zamanlı uydu görüntüsü için uydu seçeneğini kullan.",
+            relief: "Yükselti kabartması: Esri World Terrain. Topografya verisi gerçek zamanlı değildir.",
+            satellite: "Uydu görüntüsü: Esri World Imagery. Canlı yayın değildir; görüntü tarihi bölgeye göre değişir.",
+            topographic: "Topografik harita: Esri World Topographic Map. Akarsu, göl, kıyı ve yükselti bilgileri içerir.",
+            nasa: `Uydu görüntüsü: NASA VIIRS, ${nasaImageDate}. Günlük uydu ürünü; canlı yayın değildir.`
+          };
+          mapCaption.textContent = captions[name];
+          if (!activeLayers.size) {
+            status.textContent = name === "relief" ? "Türkiye — Yükselti kabartması"
+              : name === "topographic" ? "Türkiye — Topografik harita" : "Türkiye — Fiziki görünüm";
+          }
+        }
+      }
+
+      function addDataLayer(name, owner) {
+        if (name === "earthquakes") {
+          const group = earthquakeGroups.get(owner);
+          if (group && !owner.hasLayer(group)) group.addTo(owner);
+          return;
+        }
+        const layer = createDataLayer(name);
+        const layers = dataLayers.get(owner) || new Map();
+        layers.set(name, layer);
+        dataLayers.set(owner, layers);
+        layer.addTo(owner);
+      }
+
+      function removeDataLayer(name, owner) {
+        if (name === "earthquakes") {
+          const group = earthquakeGroups.get(owner);
+          if (group) owner.removeLayer(group);
+          return;
+        }
+        const layer = dataLayers.get(owner)?.get(name);
+        if (layer) owner.removeLayer(layer);
+      }
+
+      setBaseLayer("relief");
+      earthquakeGroups.set(map, createEarthquakeGroup());
+
+      function popup(title, description) {
+        return `<div class="popup-title">${title}</div><p class="popup-text">${description}</p>`;
+      }
+
+      function createEarthquakeGroup() {
+        return L.layerGroup();
+      }
+
+      function ensureWaterFocusGroup(owner) {
+        if (!waterFocusGroups.has(owner)) waterFocusGroups.set(owner, L.layerGroup());
+        return waterFocusGroups.get(owner);
+      }
+
+      function markWaterFocus(owner, place) {
+        const group = ensureWaterFocusGroup(owner);
+        group.clearLayers();
+        L.circleMarker(place.center, {
+          radius: 8, color: "#155e75", fillColor: "#38bdf8", fillOpacity: .95, weight: 3
+        }).bindPopup(popup(
+          place.name,
+          "Yaklaşık konum işareti. Akarsu güzergâhı veya göl kıyısı, topografik haritada gerçek harita verisiyle gösterilir."
+        )).bindTooltip(place.name, { direction: "top", offset: [0, -7] }).addTo(group);
+        group.addTo(owner);
+      }
+
+      function focusWaterPlace(key) {
+        const place = waterPlaces[key];
+        if (!place) return;
+        if (!activeLayers.has("water")) {
+          const button = document.querySelector('[data-layer="water"]');
+          updateLayer(button, true);
+        }
+        forEachMap(owner => markWaterFocus(owner, place));
+        map.flyTo(place.center, place.zoom, { duration: .8 });
+        note.innerHTML = `${notes.water}<br><br><strong>Harita odağı:</strong> ${place.name}.`;
+      }
+
+      function addEarthquakeFeatures(group, features) {
+        group.clearLayers();
+        features.forEach(feature => {
+          const [lon, lat, depth] = feature.geometry.coordinates;
+          const props = feature.properties;
+          const magnitude = props.mag || 0;
+          const radius = Math.max(4, Math.min(11, magnitude * 2));
+          L.circleMarker([lat, lon], {
+            radius, color: "#b9513e", fillColor: "#e98268", fillOpacity: .65, weight: 1
+          }).bindPopup(popup(
+            `M ${magnitude.toFixed(1)} · ${props.place || "Konum bilgisi yok"}`,
+            `${new Date(props.time).toLocaleString("tr-TR")} · Derinlik: ${depth} km. <a href="${props.url}" target="_blank" rel="noreferrer">USGS ayrıntısı</a>`
+          )).addTo(group);
+        });
+      }
+
+      async function loadEarthquakes() {
+        const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${start}&minlatitude=35.5&maxlatitude=42.5&minlongitude=25&maxlongitude=45.2&minmagnitude=2`;
+        try {
+          if (!earthquakeData) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`USGS isteği başarısız (${response.status})`);
+            earthquakeData = (await response.json()).features;
+          }
+          if (!activeLayers.has("earthquakes")) return;
+          earthquakeGroups.forEach(group => addEarthquakeFeatures(group, earthquakeData));
+        } catch (error) {
+          if (activeLayers.has("earthquakes")) {
+            note.innerHTML = "<strong>Deprem verisi yüklenemedi.</strong> USGS servisine şu anda ulaşılamıyor; bağlantını kontrol edip yeniden dene.";
+          }
+          console.error(error);
+        }
+      }
+
+      function forEachMap(callback) {
+        [map, ...vrMaps].forEach(callback);
+      }
+
+      function updateLayerStatus() {
+        const active = [...activeLayers];
+        status.textContent = active.length
+          ? `Türkiye — ${layerLabels[active[active.length - 1]]}`
+          : selectedBase === "relief" ? "Türkiye — Yükselti kabartması"
+            : selectedBase === "topographic" ? "Türkiye — Topografik harita" : "Türkiye — Fiziki görünüm";
+      }
+
+      function updateLayer(button, enabled) {
+        const kind = button.dataset.layer;
+        button.classList.toggle("active", enabled);
+        button.setAttribute("aria-pressed", String(enabled));
+        if (enabled) {
+          activeLayers.add(kind);
+          note.innerHTML = notes[kind];
+          if (kind === "water") {
+            baseBeforeWater = selectedBase;
+            baseControl.value = "topographic";
+            document.getElementById("water-focus").hidden = false;
+            forEachMap(owner => {
+              setBaseLayer("topographic", owner);
+              addDataLayer("water", owner);
+            });
+            focusWaterPlace(document.getElementById("water-place").value);
+          } else {
+            forEachMap(owner => addDataLayer(kind, owner));
+          }
+          if (kind === "earthquakes") {
+            loadEarthquakes();
+          }
+        } else {
+          activeLayers.delete(kind);
+          if (kind === "water") {
+            forEachMap(owner => removeDataLayer("water", owner));
+            forEachMap(owner => owner.removeLayer(ensureWaterFocusGroup(owner)));
+            document.getElementById("water-focus").hidden = true;
+            const restoreBase = baseBeforeWater;
+            baseControl.value = restoreBase;
+            forEachMap(owner => setBaseLayer(restoreBase, owner));
+          } else {
+            forEachMap(owner => removeDataLayer(kind, owner));
+          }
+          updateLayerStatus();
+          const remaining = [...activeLayers].pop();
+          note.innerHTML = remaining
+            ? notes[remaining]
+            : "<strong>Katmanlar kapatıldı.</strong> Yeni bir harita katmanı seçerek keşfe devam et.";
+        }
+      }
+
+      document.querySelectorAll(".layer-option").forEach(button => {
+        button.addEventListener("click", () => updateLayer(button, !button.classList.contains("active")));
+      });
+      document.getElementById("clear-layers").addEventListener("click", () => {
+        document.querySelectorAll(".layer-option.active").forEach(button => updateLayer(button, false));
+      });
+      document.getElementById("water-go").addEventListener("click", () => {
+        focusWaterPlace(document.getElementById("water-place").value);
+      });
+      baseControl.addEventListener("change", event => {
+        if (activeLayers.has("water")) {
+          const waterButton = document.querySelector('[data-layer="water"]');
+          updateLayer(waterButton, false);
+        }
+        forEachMap(owner => setBaseLayer(event.target.value, owner));
+      });
+      function resetMap() { map.fitBounds(turkeyBounds, { padding: [10, 10] }); }
+      document.getElementById("reset-map").addEventListener("click", resetMap);
+      document.getElementById("locate-button").addEventListener("click", resetMap);
+      document.getElementById("mission-button").addEventListener("click", () => {
+        baseControl.value = "nasa";
+        baseControl.dispatchEvent(new Event("change"));
+        map.flyTo([41.1, 35.7], 6);
+      });
+      const gyroButton = document.getElementById("vr-toggle");
+      const vrViewer = document.getElementById("vr-viewer");
+      let gyroActive = false;
+      let vrInitialized = false;
+      let previousAlpha = null;
+      let previousBeta = null;
+      let synchronizingMaps = false;
+
+      function initializeVrMaps() {
+        if (vrInitialized) return;
+        const left = L.map("vr-left-map", { zoomControl: false, minZoom: 5, maxZoom: 18 })
+          .setView(map.getCenter(), map.getZoom());
+        const right = L.map("vr-right-map", { zoomControl: false, minZoom: 5, maxZoom: 18 })
+          .setView(map.getCenter(), map.getZoom());
+        vrMaps.push(left, right);
+        vrMaps.forEach(owner => {
+          setBaseLayer(selectedBase, owner);
+          earthquakeGroups.set(owner, createEarthquakeGroup());
+          activeLayers.forEach(kind => addDataLayer(kind, owner));
+          if (activeLayers.has("water")) {
+            markWaterFocus(owner, waterPlaces[document.getElementById("water-place").value]);
+          }
+        });
+        if (activeLayers.has("earthquakes")) loadEarthquakes();
+        const allMaps = [map, ...vrMaps];
+        allMaps.forEach(source => source.on("moveend", () => {
+          if (synchronizingMaps) return;
+          synchronizingMaps = true;
+          const center = source.getCenter();
+          allMaps.forEach(target => {
+            if (target !== source) target.setView(center, source.getZoom(), { animate: false });
+          });
+          synchronizingMaps = false;
+        }));
+        vrInitialized = true;
+      }
+
+      function orientationHandler(event) {
+        if (!gyroActive || event.alpha === null || event.beta === null) return;
+        if (previousAlpha === null) {
+          previousAlpha = event.alpha;
+          previousBeta = event.beta;
+          return;
+        }
+        let deltaAlpha = event.alpha - previousAlpha;
+        if (deltaAlpha > 180) deltaAlpha -= 360;
+        if (deltaAlpha < -180) deltaAlpha += 360;
+        const deltaBeta = event.beta - previousBeta;
+        previousAlpha = event.alpha;
+        previousBeta = event.beta;
+        const center = vrMaps[0].getCenter();
+        vrMaps[0].panTo([
+          Math.max(35.7, Math.min(42.3, center.lat - deltaBeta * 0.012)),
+          Math.max(25.5, Math.min(45, center.lng + deltaAlpha * 0.012))
+        ], { animate: false });
+      }
+
+      async function startGyroscope() {
+        if (!("DeviceOrientationEvent" in window)) {
+          note.innerHTML = "<strong>VR görünümü açık.</strong> Bu cihazda jiroskop algılanmadı. Haritayı parmağınla sürükleyerek inceleyebilirsin.";
+          return;
+        }
+        if (!window.isSecureContext) {
+          note.innerHTML = "<strong>VR görünümü açık.</strong> Jiroskop için siteyi HTTPS üzerinden açman gerekir. Haritayı parmağınla sürükleyebilirsin.";
+          return;
+        }
+        try {
+          if (typeof DeviceOrientationEvent.requestPermission === "function") {
+            const permission = await DeviceOrientationEvent.requestPermission();
+            if (permission !== "granted") {
+              note.innerHTML = "<strong>VR görünümü açık.</strong> Jiroskop izni verilmedi; haritayı parmağınla sürükleyebilirsin.";
+              return;
+            }
+          }
+          window.addEventListener("deviceorientation", orientationHandler);
+          gyroActive = true;
+          previousAlpha = null;
+          previousBeta = null;
+          note.innerHTML = "<strong>Jiroskop açık.</strong> Telefonu VR gözlüğüne yerleştirip başını çevirerek Türkiye haritasında gez.";
+        } catch (error) {
+          console.error(error);
+          note.innerHTML = "<strong>Jiroskop izni alınamadı.</strong> Tarayıcı ayarlarından hareket sensörüne izin ver.";
+        }
+      }
+
+      function closeVrViewer() {
+        gyroActive = false;
+        window.removeEventListener("deviceorientation", orientationHandler);
+        previousAlpha = null;
+        previousBeta = null;
+        vrViewer.hidden = true;
+        gyroButton.setAttribute("aria-pressed", "false");
+        gyroButton.textContent = "🥽 VR gözlük görünümü";
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      }
+
+      async function openVrViewer() {
+        vrViewer.hidden = false;
+        gyroButton.setAttribute("aria-pressed", "true");
+        gyroButton.textContent = "⏹ VR görünümünden çık";
+        initializeVrMaps();
+        requestAnimationFrame(() => vrMaps.forEach(owner => owner.invalidateSize()));
+        const gyroPermission = startGyroscope();
+        if (document.documentElement.requestFullscreen) {
+          try { await document.documentElement.requestFullscreen(); } catch (error) { console.info("Tam ekran kullanılamıyor:", error); }
+        }
+        await gyroPermission;
+      }
+
+      gyroButton.addEventListener("click", () => {
+        if (vrViewer.hidden) openVrViewer();
+        else closeVrViewer();
+      });
+      document.getElementById("vr-close").addEventListener("click", closeVrViewer);
+      document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !vrViewer.hidden) closeVrViewer();
+      });
+
+      const bepButton = document.getElementById("bep-toggle");
+      const bepAssist = document.getElementById("bep-assist");
+      bepButton.addEventListener("click", () => {
+        const enabled = document.body.classList.toggle("bep-mode");
+        bepButton.setAttribute("aria-pressed", String(enabled));
+        bepButton.title = enabled
+          ? "BEP görünümü açık. Kapatmak için seç."
+          : "Bireyselleştirilmiş Eğitim Programı: kolay okuma ve dinleme seçenekleri";
+        bepButton.innerHTML = `${enabled ? "✓ " : ""}<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M5 8h14M7 8v3a5 5 0 0 0 10 0V8M4 21h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>${enabled ? "BEP açık" : "BEP modu"}`;
+        bepAssist.hidden = !enabled;
+        if (!enabled && window.speechSynthesis) window.speechSynthesis.cancel();
+        document.getElementById("read-aloud").setAttribute("aria-pressed", "false");
+        document.getElementById("read-aloud").textContent = "🔊 Sayfayı sesli oku";
+      });
+      document.getElementById("read-aloud").addEventListener("click", event => {
+        if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance !== "function") {
+          note.innerHTML = "<strong>Sesli okuma desteklenmiyor.</strong> Bu tarayıcıda ekran okuyucuyu kullanabilirsin.";
+          return;
+        }
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          event.currentTarget.textContent = "🔊 Sayfayı sesli oku";
+          event.currentTarget.setAttribute("aria-pressed", "false");
+          return;
+        }
+        const selectors = ".intro h1, .intro-copy, .side-heading h2, .layer-help, .layer-name, .layer-desc, .source-note, .lesson h3, .lesson p, .section-heading h2, .section-heading p, .learn-card h3, .learn-card p";
+        const text = [...document.querySelectorAll(selectors)].map(element => element.innerText).filter(Boolean).join(". ");
+        const speech = new SpeechSynthesisUtterance(text);
+        const readButton = event.currentTarget;
+        speech.lang = "tr-TR";
+        speech.onend = () => {
+          readButton.textContent = "🔊 Sayfayı sesli oku";
+          readButton.setAttribute("aria-pressed", "false");
+        };
+        window.speechSynthesis.speak(speech);
+        event.currentTarget.textContent = "⏹ Okumayı durdur";
+        event.currentTarget.setAttribute("aria-pressed", "true");
+      });
+      document.getElementById("riddle-button").addEventListener("click", event => {
+        const answer = document.getElementById("riddle-answer");
+        answer.textContent = answer.textContent ? "" : "Cevap: Karadeniz iklimi. 🌧️";
+        event.currentTarget.textContent = answer.textContent ? "Gizle ↑" : "Cevabı göster →";
+      });
+      document.querySelectorAll(".quiz-choice").forEach(button => {
+        button.addEventListener("click", () => {
+          const feedback = document.getElementById("quiz-feedback");
+          const correct = button.dataset.correct === "true";
+          feedback.textContent = correct ? "Doğru! Kızılırmak, bütünüyle Türkiye sınırları içindeki en uzun akarsudur. 🎉" : "Bir daha düşün! İpucu: Adını suyunun renginden alır.";
+          feedback.style.color = correct ? "#2f7156" : "#a85c37";
+        });
+      });
+      map.on("moveend", () => {
+        if (synchronizingMaps || !vrInitialized) return;
+        synchronizingMaps = true;
+        const center = map.getCenter();
+        vrMaps.forEach(owner => owner.setView(center, map.getZoom(), { animate: false }));
+        synchronizingMaps = false;
+      });
+      document.addEventListener("fullscreenchange", () => {
+        if (!vrViewer.hidden) requestAnimationFrame(() => vrMaps.forEach(owner => owner.invalidateSize()));
+      });
+      map.fitBounds(turkeyBounds, { padding: [10, 10] });
+    })();
+  </script>
+</body>
+</html>
